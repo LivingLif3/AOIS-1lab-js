@@ -1,3 +1,7 @@
+const SHIFT = 127
+const EXPONENT_END_INDEX = 9
+const MANTISSA_LENGTH = 23
+
 const bin_to_int = (number) => {
     let res = 0
     for(let i = 1; i < number.length; i++) {
@@ -52,17 +56,17 @@ const num_to_bin = (number, a) => {
 
 const bin_to_num = (number) => {
     let ans = 0
-    let tmp = []
+    let intPart = []
     let i = 0
     while(number[i] !== '.') {
-        tmp.push(number[i])
+        intPart.push(number[i])
         i++
     }
-    ans = bin_to_int(tmp)
-    k = -1
+    ans = bin_to_int(intPart)
+    let degree = -1
     for (let j = number.indexOf('.') + 1; j < number.length; j++) {
-        ans += (number[j]) * 2**k;
-        k--;
+        ans += (number[j]) * 2**degree;
+        degree--;
     }
     return ans;
 }
@@ -94,9 +98,9 @@ const add_zeroes = (number1, number2) => {
 
 const sumBinForm = (number1, number2, raz) => {
     let ost = 0, pointIndex
-    let obj = add_zeroes(number1, number2)
-    number1 = obj.number1
-    number2 = obj.number2
+    let numbers = add_zeroes(number1, number2)
+    number1 = numbers.number1
+    number2 = numbers.number2
     number1.indexOf('.') === -1 ? pointIndex = number1.length - 1 : pointIndex = number1.indexOf('.') - 1
     let ans = []
     for(let i = number1.length - 1; i > 0; i--) {
@@ -137,9 +141,9 @@ const sumBinForm = (number1, number2, raz) => {
 const sum = (num1, num2) => {
     let number1 = num_to_bin([], num1)
     let number2 = num_to_bin([], num2)
-    let obj = add_zeroes(number1, number2)
-    number1 = obj.number1
-    number2 = obj.number2
+    let numbers = add_zeroes(number1, number2)
+    number1 = numbers.number1
+    number2 = numbers.number2
     let ans = sumBinForm(number1, number2, true)
     console.log(ans.join(''))
     return bin_to_num(ans)
@@ -158,9 +162,9 @@ const transform_to_additional_code = (num1, num2) => {
     let {number1, number2} = add_zeroes(num1, num2)
     number2 = invert(number2)
     let one = int_to_bin([], 1)
-    let obj = add_zeroes(number2, one)
-    let copyNumber2 = obj.number1
-    let copyOne = obj.number2
+    let numbers = add_zeroes(number2, one)
+    let copyNumber2 = numbers.number1
+    let copyOne = numbers.number2
     let res = sumBinForm(copyNumber2, copyOne, false)
     return res
 }
@@ -211,29 +215,29 @@ const multiplication = (num1, num2) => {
     for(let i = 0; i < num1.length + num2.length + 1; i++) {
         ans.push(0)
     }
-    let razLen = 0
+    let rankLength = 0
     for(let i = num2.length - 2; i > 0; i--) {
-        let tmp = []
+        let resTwoNum = []
         let storage = []
 
         for(let j = num1.length - 2; j > 0; j--) {
-            tmp.unshift(num1[j]*num2[i])
+            resTwoNum.unshift(num1[j]*num2[i])
         }
-        for(let k = 0; k < razLen; k++) {
-            tmp.push(0)
+        for(let k = 0; k < rankLength; k++) {
+            resTwoNum.push(0)
         }
-        tmp.unshift(0)
-        let length1 = tmp.length - 1
+        resTwoNum.unshift(0)
+        let length1 = resTwoNum.length - 1
         let length2 = ans.length - 1
 
-        storage = sumBinForm(tmp, ans, true)
+        storage = sumBinForm(resTwoNum, ans, true)
         for(let k = 0; k < storage.length; k++) {
             ans[k] = storage[k]
         }
 
-        razLen++
+        rankLength++
     }
-    console.log(ans.join(''))
+
     return bin_to_num(ans)
 }
 
@@ -247,14 +251,14 @@ const multiplication_wrapper = (num1, num2) => {
 
 const division = (num1, num2) => {
     let sch = 0
-    let tmp = []
+    let residualResult = []
     let copyNum2 = num2.slice(0)
     let ans = []
     while(bin_to_num(num1) >= bin_to_num(num2)) {
-        difference_double(num1, num2, tmp)
-        num1 = tmp;
+        difference_double(num1, num2, residualResult)
+        num1 = residualResult;
         num2 = copyNum2.slice(0)
-        tmp = []
+        residualResult = []
         sch++
     }
     console.log(num_to_bin([], sch).join(''))
@@ -291,9 +295,13 @@ const double_to_variable_binary = (num, a) => {
             break
         }
     }
-    let tmp = (a - 2**begin) / (2**end - 2**begin)
-    let M = Math.floor(2**23 * tmp)
-    let E = begin + 127
+    let coefficient = (a - 2**begin) / (2**end - 2**begin)
+    let M = Math.floor(2**MANTISSA_LENGTH * coefficient)
+    let E = begin + SHIFT
+    return prepare_to_standart(num, exp, m, E, M)
+}
+
+const prepare_to_standart = (num, exp, m, E, M) => {
     int_to_bin_for_mantis(exp, E)
     while(exp.length !== 8) {
         exp.unshift(0)
@@ -302,7 +310,7 @@ const double_to_variable_binary = (num, a) => {
     for(let i = 0; i < exp.length; i++) {
         num.push(exp[i])
     }
-    while(m.length !== 23) {
+    while(m.length !== MANTISSA_LENGTH) {
         m.unshift(0)
     }
     for(let i = 0; i < m.length; i++) {
@@ -331,18 +339,18 @@ const transform_mantis_to_num = (number) => {
     for(let i = 1; i <= 8; i++) {
         exp.push(number[i])
     }
-    for(let i = 9; i <= number.length - 1; i++) {
+    for(let i = EXPONENT_END_INDEX; i <= number.length - 1; i++) {
         mantis.push(number[i])
     }
     exp.unshift(0)
     mantis.unshift(0)
     let E = bin_to_int(exp), M = bin_to_int(mantis)
-    return s*(2**(E - 127))*(1 + M/(2**23))
+    return s*(2**(E - SHIFT))*(1 + M/(2**MANTISSA_LENGTH))
 }
 
 const transform_to_mantis = (num) => {
     let number = num_to_bin([], num), ans = []
-    let exp = 127, m = []
+    let exp = SHIFT, m = []
     number.shift()
     let pointIndex = number.indexOf('.')
     if(num > 1) {
@@ -357,10 +365,10 @@ const transform_to_mantis = (num) => {
         for(let i = pointIndex + 1; i < number.length; i++) {
             m.push(number[i])
         }
-        if(m.length > 23) {
-            m.length = 23
+        if(m.length > MANTISSA_LENGTH) {
+            m.length = MANTISSA_LENGTH
         } else {
-            while(m.length !== 23) {
+            while(m.length !== MANTISSA_LENGTH) {
                 m.push(0)
             }
         }
@@ -384,14 +392,14 @@ const set_exp = (newExp, number) => {
 }
 
 const set_mantis = (newMantis, number) => {
-    for(let i = 9; i <= number.length - 1; i++) {
-        number[i] = newMantis[i - 9]
+    for(let i = EXPONENT_END_INDEX; i <= number.length - 1; i++) {
+        number[i] = newMantis[i - EXPONENT_END_INDEX]
     }
 }
 
 const get_mantis = (number) => {
     let ans = []
-    for(let i = 9; i <= number.length - 1; i++) {
+    for(let i = EXPONENT_END_INDEX; i <= number.length - 1; i++) {
         ans.push(number[i])
     }
     return ans
@@ -423,25 +431,23 @@ const sum_mantis_sec = (number1, number2, raz) => {
 
     if(E1 > E2) {
         maxExp = E1
-        /*if(exp1[0] === 0) {
-            maxExp += 1
-        }*/
         shiftMant = {num: 2, shift: E1 - E2}
     } else if(E2 > E1) {
         maxExp = E2
-       /* if(exp2[0] === 0) {
-            maxExp += 1
-        }*/
         shiftMant = {num: 1, shift: E2 - E1}
     }
 
-    let obj = sumMantis(mantissa1, mantissa2, shiftMant, raz)
+    let mantisWithShift = sumMantis(mantissa1, mantissa2, shiftMant, raz)
 
-    let shift = obj.shift
+    let shift = mantisWithShift.shift
 
     maxExp += shift
 
-    let ansMantissa = obj.mantis
+    return prepareAnsManissa(number1, mantisWithShift, maxExp)
+}
+
+const prepareAnsManissa = (number1, mantisWithShift, maxExp) => {
+    let ansMantissa = mantisWithShift.mantis
 
     let ansExp = num_to_bin([], maxExp)
 
@@ -503,6 +509,10 @@ const sumMantis = (m1, m2, shiftNum, raz) => {
     mantis1.unshift(0)
     mantis2.unshift(0)
 
+    return transformation_sum_mantiss(mantis1, mantis2)
+}
+
+const transformation_sum_mantiss = (mantis1, mantis2) => {
     let ans = sumBinForm(mantis1, mantis2, true)
 
     ans.shift()
@@ -524,12 +534,12 @@ const sumMantis = (m1, m2, shiftNum, raz) => {
     let newMantis = []
 
     for(let i = firstOne + 1; i < ans.length; i++) {
-        if(newMantis.length < 23) {
+        if(newMantis.length < MANTISSA_LENGTH) {
             newMantis.push(ans[i])
         }
     }
 
-    while(newMantis.length !== 23) {
+    while(newMantis.length !== MANTISSA_LENGTH) {
         newMantis.push(0)
     }
 
